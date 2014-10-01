@@ -1,4 +1,4 @@
-# Contributing to PX4 Firmware
+# Contributing to NavStik Firmware
 
 We follow the [Github flow](https://guides.github.com/introduction/flow/) development model.
 
@@ -16,11 +16,11 @@ git checkout -b mydescriptivebranchname
 
 ### Edit and build the code
 
-The [developer guide](http://pixhawk.org/dev/start) explains how to set up the development environment on Mac OS, Linux or Windows. Please take note of our [coding style](http://pixhawk.org/dev/code_style) when editing files.
+The [developer guide](http://wiki.navstik.org) explains how to set up the development environment on Mac OS, Linux or Windows. 
 
 ### Commit your changes
 
-Always write descriptive commit messages and add a fixes or relates note to them with an [issue number](https://github.com/px4/Firmware/issues) (Github will link these then conveniently)
+Always write descriptive commit messages and add a fixes or relates note to them with an [issue number](https://github.com/navstik/pandapilot_v4/issues) (Github will link these then conveniently)
 
 **Example:**
 
@@ -39,6 +39,6 @@ Since we care about safety, we will regularly ask you for test results. Best is 
 
 ### Push your changes
 
-Push changes to your repo and send a [pull request](https://github.com/PX4/Firmware/compare/).
+Push changes to your repo and send a [pull request](https://github.com/navstik/pandapilot_v4/compare/).
 
 Make sure to provide some testing feedback and if possible the link to a flight log file.

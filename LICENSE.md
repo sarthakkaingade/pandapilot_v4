@@ -1,8 +1,7 @@
-The PX4 firmware is licensed generally under a permissive 3-clause BSD license. Contributions are required
-to be made under the same license. Any exception to this general rule is listed below.
+NavStik Firmware is based on PX4 firmware.The PX4 firmware is licensed generally under a permissive 3-clause BSD license. Contributions are required to be made under the same license. Any exception to this general rule is listed below.
 
 	/****************************************************************************
-	 *
+	 *   Copyright (c) 2014 NavStik Development Team. All rights reserved.
 	 *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
 	 *
 	 * Redistribution and use in source and binary forms, with or without
