@@ -1,4 +1,4 @@
-#
+#   Copyright (c) 2014 NavStik Development Team. All rights reserved.
 #   Copyright (C) 2012-2014 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -291,15 +291,15 @@ endef
 #       like the MinGW tools insert an extra _ in the binary symbol name; e.g.
 #	the path:
 #
-#	/d/px4/firmware/Build/px4fmu_default.build/romfs.img
+#	/d/navstik/firmware/Build/navstik-v1_default.build/romfs.img
 #
 #	is assigned symbols like:
 #
-#	_binary_d__px4_firmware_Build_px4fmu_default_build_romfs_img_size
+#	_binary_d__navstik_firmware_Build_navstik-v1_default_build_romfs_img_size
 #
 #	when we would expect
 #
-#	_binary__d_px4_firmware_Build_px4fmu_default_build_romfs_img_size
+#	_binary__d_navstik_firmware_Build_navstik-v1_default_build_romfs_img_size
 #
 define BIN_SYM_PREFIX
 	_binary_$(subst /,_,$(subst .,_,$1))
