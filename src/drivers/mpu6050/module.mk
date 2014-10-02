@@ -37,7 +37,7 @@
 
 MODULE_COMMAND	= mpu6050
 
-SRCS		= mpu6000.cpp
+SRCS		= mpu6050.cpp
 
 MODULE_STACKSIZE	= 1200
 

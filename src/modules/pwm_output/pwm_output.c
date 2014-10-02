@@ -83,8 +83,8 @@ __EXPORT int pwm_output_main(int argc, char *argv[]);
 
 int        pwm_output_main(int argc, char *argv[])
 {
-   uint16_t value[6] = {1000,1200,1500,1700,1800,2000};
-   int t=0,n=0;
+   //uint16_t value[6] = {1000,1200,1500,1700,1800,2000};
+   int n=0;
    n = up_pwm_servo_init(0x3F) ; // initialising pwm
    
    up_pwm_servo_arm(1);//arming servos

@@ -242,7 +242,7 @@ __EXPORT int nsh_archinitialize(void)
 	//	SPI_SELECT(spi2, PX4_SPIDEV_ACCEL_MAG, false);
 
 	//	message("[boot] Initialized SPI port2 (ADC IN12/13 blocked)\n");
-	#else
+	//#else
 	//	spi2 = NULL;
 	//	message("[boot] Enabling IN12/13 instead of SPI2\n");
 		/* no SPI2, use pins for ADC */
@@ -253,7 +253,7 @@ __EXPORT int nsh_archinitialize(void)
 	/* Get the SPI port for the microSD slot */
 
 	message("[boot] Initializing SPI port 2\n");
-	spi3 = up_spiinitialize(2);
+	spi2 = up_spiinitialize(2);
 
 	if (!spi2) {
 		message("[boot] FAILED to initialize SPI port 2\n");

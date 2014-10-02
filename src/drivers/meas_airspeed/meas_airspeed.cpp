@@ -413,7 +413,7 @@ start(int i2c_bus)
 	}
 
 	/* create the driver, try the MS4515DO first */
-	g_dev = new MEASAirspeed(i2c_bus, NAVSTIK_I2C_OBDEV_MS4515O, PATH_MS4515);
+	g_dev = new MEASAirspeed(i2c_bus, NAVSTIK_I2C_OBDEV_MS4515, PATH_MS4515);
 
 	/* check if the MS4525DO was instantiated */
 	if (g_dev == nullptr) {
@@ -423,7 +423,7 @@ start(int i2c_bus)
 	/* try the MS5525DSO next if init fails */
 	if (OK != g_dev->Airspeed::init()) {
 		delete g_dev;
-		g_dev = new MEASAirspeed(i2c_bus, NAVSTIK_I2C_OBDEV_MS4515O, PATH_MS5515);
+		g_dev = new MEASAirspeed(i2c_bus, NAVSTIK_I2C_OBDEV_MS4515, PATH_MS4515);
 
 		/* check if the MS5525DSO was instantiated */
 		if (g_dev == nullptr) {

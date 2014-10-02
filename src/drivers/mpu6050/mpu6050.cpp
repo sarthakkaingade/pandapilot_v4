@@ -1421,34 +1421,6 @@ test()
     gyro_report g_report;
     ssize_t sz;
 
-    #pragma pack(push, 1)
-	/**
-     * Report conversation within the MPU6050, including command byte and
-     * interrupt status.
-     */
-    struct MPUReport {
-        uint8_t     cmd;
-        uint8_t     status;
-        uint8_t     accel_x[2];
-        uint8_t     accel_y[2];
-        uint8_t     accel_z[2];
-        uint8_t     temp[2];
-        uint8_t     gyro_x[2];
-        uint8_t     gyro_y[2];
-        uint8_t     gyro_z[2];
-    } mpu_report;
-#pragma pack(pop)
-
-    struct Report {
-        int16_t     accel_x;
-        int16_t     accel_y;
-        int16_t     accel_z;
-        int16_t     temp;
-        int16_t     gyro_x;
-        int16_t     gyro_y;
-        int16_t     gyro_z;
-	} report;
-
     /* get the driver */
     int fd = open(ACCEL_DEVICE_PATH, O_RDONLY);
 
