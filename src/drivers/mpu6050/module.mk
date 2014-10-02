@@ -32,12 +32,12 @@
 ############################################################################
 
 #
-# HMC5883 driver
+# Makefile to build the MPU6050 driver.
 #
 
-MODULE_COMMAND	= hmc5883
+MODULE_COMMAND	= mpu6050
 
-SRCS		= hmc5883.cpp
+SRCS		= mpu6000.cpp
 
 MODULE_STACKSIZE	= 1200
 

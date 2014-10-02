@@ -30,15 +30,10 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-
 #
-# HMC5883 driver
+# Makefile to build the BMP180 driver.
 #
 
-MODULE_COMMAND	= hmc5883
-
-SRCS		= hmc5883.cpp
-
-MODULE_STACKSIZE	= 1200
-
-EXTRACXXFLAGS	= -Weffc++
+MODULE_COMMAND	 = bmp180
+MODULE_STACKSIZE	 = 2048
+SRCS		= bmp180.cpp

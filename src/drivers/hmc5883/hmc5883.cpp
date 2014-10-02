@@ -1,5 +1,5 @@
 /****************************************************************************
- *
+ *   Copyright (c) 2014 NavStik Development Team. All rights reserved.
  *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -78,7 +78,7 @@
  * HMC5883 internal constants and data structures.
  */
 
-#define HMC5883L_ADDRESS		PX4_I2C_OBDEV_HMC5883
+#define HMC5883L_ADDRESS		NAVSTIK_I2C_OBDEV_HMC5883
 #define HMC5883L_DEVICE_PATH_INT	"/dev/hmc5883_int"
 #define HMC5883L_DEVICE_PATH_EXT	"/dev/hmc5883_ext"
 
@@ -768,7 +768,7 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 		return check_calibration();
 
 	case MAGIOCGEXTERNAL:
-		if (_bus == PX4_I2C_BUS_EXPANSION)
+		if (_bus == NAVSTIK_I2C_BUS_SENSORS)
 			return 1;
 		else
 			return 0;
@@ -936,33 +936,50 @@ HMC5883::collect()
 	/*
 	 * RAW outputs
 	 *
-	 * to align the sensor axes with the board, x and y need to be flipped
-	 * and y needs to be negated
+	 * to align the sensor axes with the board, x and y needs to be negated
 	 */
-	new_report.x_raw = report.y;
-	new_report.y_raw = -report.x;
+	new_report.x_raw = -report.x;
+	new_report.y_raw = -report.y;
 	/* z remains z */
 	new_report.z_raw = report.z;
 
 	/* scale values for output */
 
-#ifdef PX4_I2C_BUS_ONBOARD
-	if (_bus == PX4_I2C_BUS_ONBOARD) {
-		// convert onboard so it matches offboard for the
-		// scaling below
-		report.y = -report.y;
-		report.x = -report.x;
-        }
-#endif
+	/*
+	 * 1) Scale raw value to SI units using scaling from datasheet.
+	 * 2) Subtract static offset (in SI units)
+	 * 3) Scale the statically calibrated values with a linear
+	 *    dynamically obtained factor
+	 *
+	 * Note: the static sensor offset is the number the sensor outputs
+	 * 	 at a nominally 'zero' input. Therefore the offset has to
+	 * 	 be subtracted.
+	 *
+	 *	 Example: A gyro outputs a value of 74 at zero angular rate
+	 *	 	  the offset is 74 from the origin and subtracting
+	 *		  74 from all measurements centers them around zero.
+	 */
 
-	/* the standard external mag by 3DR has x pointing to the
-	 * right, y pointing backwards, and z down, therefore switch x
-	 * and y and invert y */
-	new_report.x = ((-report.y * _range_scale) - _scale.x_offset) * _scale.x_scale;
-	/* flip axes and negate value for y */
-	new_report.y = ((report.x * _range_scale) - _scale.y_offset) * _scale.y_scale;
-	/* z remains z */
-	new_report.z = ((report.z * _range_scale) - _scale.z_offset) * _scale.z_scale;
+#ifdef NAVSTIK_I2C_BUS_SENSORS
+	if (_bus == NAVSTIK_I2C_BUS_SENSORS) {
+		/* to align the sensor axes with the board, negate value for x */
+		new_report.x = ((-report.x * _range_scale) - _scale.x_offset) * _scale.x_scale;
+		/* negate value for y */
+		new_report.y = ((-report.y * _range_scale) - _scale.y_offset) * _scale.y_scale;
+		/* z remains z */
+		new_report.z = ((report.z * _range_scale) - _scale.z_offset) * _scale.z_scale;
+	} else {
+#endif
+		/* the standard external mag by 3DR has x pointing to the right, y pointing backwards, and z down,
+		 * therefore switch x and y and invert y */
+		new_report.x = ((-report.y * _range_scale) - _scale.x_offset) * _scale.x_scale;
+		/* flip axes and negate value for y */
+		new_report.y = ((report.x * _range_scale) - _scale.y_offset) * _scale.y_scale;
+		/* z remains z */
+		new_report.z = ((report.z * _range_scale) - _scale.z_offset) * _scale.z_scale;
+#ifdef NAVSTIK_I2C_BUS_SENSORS
+	}
+#endif
 
 	// apply user specified rotation
 	rotate_3f(_rotation, new_report.x, new_report.y, new_report.z);
@@ -1383,35 +1400,35 @@ start(int bus, enum Rotation rotation)
 {
 	int fd;
 
-	/* create the driver, attempt expansion bus first */
-	if (bus == -1 || bus == PX4_I2C_BUS_EXPANSION) {
+	/* create the driver, attempt expansion bus first 
+	if (bus == -1 || bus == NAVSTIK_I2C_BUS_SENSORS) {
 		if (g_dev_ext != nullptr)
 			errx(0, "already started external");
-		g_dev_ext = new HMC5883(PX4_I2C_BUS_EXPANSION, HMC5883L_DEVICE_PATH_EXT, rotation);
+		g_dev_ext = new HMC5883(NAVSTIK_I2C_BUS_SENSORS, HMC5883L_DEVICE_PATH_EXT, rotation);
 		if (g_dev_ext != nullptr && OK != g_dev_ext->init()) {
 			delete g_dev_ext;
 			g_dev_ext = nullptr;
 		}
-	}
+	}*/	//XXX ToDo
 			
 
-#ifdef PX4_I2C_BUS_ONBOARD
+#ifdef NAVSTIK_I2C_BUS_SENSORS
 	/* if this failed, attempt onboard sensor */
-	if (bus == -1 || bus == PX4_I2C_BUS_ONBOARD) {
+	if (bus == -1 || bus == NAVSTIK_I2C_BUS_SENSORS) {
 		if (g_dev_int != nullptr)
 			errx(0, "already started internal");
-		g_dev_int = new HMC5883(PX4_I2C_BUS_ONBOARD, HMC5883L_DEVICE_PATH_INT, rotation);
+		g_dev_int = new HMC5883(NAVSTIK_I2C_BUS_SENSORS, HMC5883L_DEVICE_PATH_INT, rotation);
 		if (g_dev_int != nullptr && OK != g_dev_int->init()) {
 
 			/* tear down the failing onboard instance */
 			delete g_dev_int;
 			g_dev_int = nullptr;
 
-			if (bus == PX4_I2C_BUS_ONBOARD) {
+			if (bus == NAVSTIK_I2C_BUS_SENSORS) {
 				goto fail;
 			}
 		}
-		if (g_dev_int == nullptr && bus == PX4_I2C_BUS_ONBOARD) {
+		if (g_dev_int == nullptr && bus == NAVSTIK_I2C_BUS_SENSORS) {
 			goto fail;
 		}
 	}
@@ -1444,11 +1461,11 @@ start(int bus, enum Rotation rotation)
 	exit(0);
 
 fail:
-	if (g_dev_int != nullptr && (bus == -1 || bus == PX4_I2C_BUS_ONBOARD)) {
+	if (g_dev_int != nullptr && (bus == -1 || bus == NAVSTIK_I2C_BUS_SENSORS)) {
 		delete g_dev_int;
 		g_dev_int = nullptr;
 	}
-	if (g_dev_ext != nullptr && (bus == -1 || bus == PX4_I2C_BUS_EXPANSION)) {
+	if (g_dev_ext != nullptr && (bus == -1 || bus == NAVSTIK_I2C_BUS_SENSORS)) {	//XXX ToDo
 		delete g_dev_ext;
 		g_dev_ext = nullptr;
 	}
@@ -1467,7 +1484,7 @@ test(int bus)
 	struct mag_report report;
 	ssize_t sz;
 	int ret;
-	const char *path = (bus==PX4_I2C_BUS_ONBOARD?HMC5883L_DEVICE_PATH_INT:HMC5883L_DEVICE_PATH_EXT);
+	const char *path = (bus==NAVSTIK_I2C_BUS_SENSORS?HMC5883L_DEVICE_PATH_INT:HMC5883L_DEVICE_PATH_EXT);
 
 	int fd = open(path, O_RDONLY);
 
@@ -1568,7 +1585,7 @@ test(int bus)
 int calibrate(int bus)
 {
 	int ret;
-	const char *path = (bus==PX4_I2C_BUS_ONBOARD?HMC5883L_DEVICE_PATH_INT:HMC5883L_DEVICE_PATH_EXT);
+	const char *path = (bus==NAVSTIK_I2C_BUS_SENSORS?HMC5883L_DEVICE_PATH_INT:HMC5883L_DEVICE_PATH_EXT);
 
 	int fd = open(path, O_RDONLY);
 
@@ -1595,7 +1612,7 @@ int calibrate(int bus)
 void
 reset(int bus)
 {
-	const char *path = (bus==PX4_I2C_BUS_ONBOARD?HMC5883L_DEVICE_PATH_INT:HMC5883L_DEVICE_PATH_EXT);
+	const char *path = (bus==NAVSTIK_I2C_BUS_SENSORS?HMC5883L_DEVICE_PATH_INT:HMC5883L_DEVICE_PATH_EXT);
 
 	int fd = open(path, O_RDONLY);
 
@@ -1617,7 +1634,7 @@ reset(int bus)
 void
 info(int bus)
 {
-	HMC5883 *g_dev = (bus == PX4_I2C_BUS_ONBOARD?g_dev_int:g_dev_ext);
+	HMC5883 *g_dev = (bus == NAVSTIK_I2C_BUS_SENSORS?g_dev_int:g_dev_ext);
 	if (g_dev == nullptr)
 		errx(1, "driver not running");
 
@@ -1635,7 +1652,7 @@ usage()
 	warnx("    -R rotation");
 	warnx("    -C calibrate on start");
 	warnx("    -X only external bus");
-#ifdef PX4_I2C_BUS_ONBOARD
+#ifdef NAVSTIK_I2C_BUS_SENSORS
 	warnx("    -I only internal bus");
 #endif
 }
@@ -1655,13 +1672,13 @@ hmc5883_main(int argc, char *argv[])
 		case 'R':
 			rotation = (enum Rotation)atoi(optarg);
 			break;
-#ifdef PX4_I2C_BUS_ONBOARD
+#ifdef NAVSTIK_I2C_BUS_SENSORS
 		case 'I':
-			bus = PX4_I2C_BUS_ONBOARD;
+			bus = NAVSTIK_I2C_BUS_SENSORS;
 			break;
 #endif
 		case 'X':
-			bus = PX4_I2C_BUS_EXPANSION;
+			bus = NAVSTIK_I2C_BUS_SENSORS;	//XXX ToDo
 			break;
 		case 'C':
 			calibrate = true;
