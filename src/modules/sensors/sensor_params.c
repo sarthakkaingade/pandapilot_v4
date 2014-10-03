@@ -1,5 +1,5 @@
 /****************************************************************************
- *
+ *   Copyright (c) 2014 NavStik Development Team. All rights reserved.
  *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -550,6 +550,13 @@ PARAM_DEFINE_INT32(BAT_V_SCALE_IO, 10000);
  * @group Battery Calibration
  */
 PARAM_DEFINE_FLOAT(BAT_V_SCALING, 0.0082f);
+#elif CONFIG_ARCH_BOARD_NAVSTIK_V1
+/**
+ * Scaling factor for battery voltage sensor on NAVSTIK.
+ *
+ * @group Battery Calibration
+ */
+PARAM_DEFINE_FLOAT(BAT_V_SCALING, 0.00388436f);
 #elif CONFIG_ARCH_BOARD_AEROCORE
 /**
  * Scaling factor for battery voltage sensor on AeroCore.

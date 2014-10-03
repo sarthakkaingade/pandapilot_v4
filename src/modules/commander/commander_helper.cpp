@@ -1,5 +1,5 @@
 /****************************************************************************
- *
+ *   Copyright (c) 2014 NavStik Development Team. All rights reserved.
  *   Copyright (c) 2013, 2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -89,6 +89,8 @@ static hrt_abstime blink_msg_end = 0;	// end time for currently blinking LED mes
 static hrt_abstime tune_end = 0;		// end time of currently played tune, 0 for repeating tunes or silence
 static int tune_current = TONE_STOP_TUNE;		// currently playing tune, can be interrupted after tune_end
 static unsigned int tune_durations[TONE_NUMBER_OF_TUNES];
+static bool print_easy_board_detection= true;
+static bool print_pro_board_detection = true; /**Board Detection Warning**/
 
 int buzzer_init()
 {
@@ -327,6 +329,25 @@ float battery_remaining_estimate_voltage(float voltage, float discharged, float 
 	} else {
 		/* else use voltage */
 		ret = remaining_voltage;
+	}
+
+	if(voltage < 5.5f)
+	{
+		if (print_easy_board_detection)
+		{
+		warnx("\nEasy Board Detected");
+		warnx("\nSetting Battery Health to 0.8");
+		print_easy_board_detection=false;
+		}
+		ret=0.8;
+	}
+	else
+	{
+		if(print_pro_board_detection)
+		{
+		warnx("\nPro Board Detected");
+		print_pro_board_detection=false;
+		}
 	}
 
 	/* limit to sane values */

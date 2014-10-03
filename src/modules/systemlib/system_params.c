@@ -1,5 +1,5 @@
 /****************************************************************************
- *
+ *   Copyright (c) 2014 NavStik Development Team. All rights reserved.
  *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -70,7 +70,7 @@ PARAM_DEFINE_INT32(SYS_AUTOCONFIG, 0);
 * @max 1
 * @group System
 */
-PARAM_DEFINE_INT32(SYS_USE_IO, 1);
+PARAM_DEFINE_INT32(SYS_USE_IO, 0);
 
 /**
 * Set restart type

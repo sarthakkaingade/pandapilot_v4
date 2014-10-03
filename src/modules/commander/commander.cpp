@@ -1,5 +1,5 @@
 /****************************************************************************
- *
+ *   Copyright (c) 2014 NavStik Development Team. All rights reserved.
  *   Copyright (C) 2013-2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1918,6 +1918,28 @@ control_status_leds(vehicle_status_s *status_local, const actuator_armed_s *actu
 	}
 
 #ifdef CONFIG_ARCH_BOARD_PX4FMU_V1
+
+	/* this runs at around 20Hz, full cycle is 16 ticks = 10/16Hz */
+	if (actuator_armed->armed) {
+		/* armed, solid */
+		led_on(LED_BLUE);
+
+	} else if (actuator_armed->ready_to_arm) {
+		/* ready to arm, blink at 1Hz */
+		if (leds_counter % 20 == 0) {
+			led_toggle(LED_BLUE);
+		}
+
+	} else {
+		/* not ready to arm, blink at 10Hz */
+		if (leds_counter % 2 == 0) {
+			led_toggle(LED_BLUE);
+		}
+	}
+
+#endif
+
+#ifdef CONFIG_ARCH_BOARD_NAVSTIK_V1
 
 	/* this runs at around 20Hz, full cycle is 16 ticks = 10/16Hz */
 	if (actuator_armed->armed) {
