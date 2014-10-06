@@ -752,6 +752,7 @@ NAVSTIKFMU::task_main()
 
 #ifdef CONFIG_ARCH_BOARD_NAVSTIK_V1
 		rc_in.timestamp_publication = hrt_absolute_time();
+		rc_in.timestamp_last_signal = hrt_absolute_time();
 		rc_in.channel_count = PWM_INPUT_CHANNELS ;
 		for (uint8_t i=0; i<rc_in.channel_count; i++) {
 			rc_in.values[i] = rc_buffer[i];
