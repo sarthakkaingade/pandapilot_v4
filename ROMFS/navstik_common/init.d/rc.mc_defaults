@@ -44,7 +44,4 @@ then
 	param set NAV_ACCEPT_RAD 2.0
 fi
 
-set PWM_RATE 400
-set PWM_DISARMED 900
-set PWM_MIN 1075
-set PWM_MAX 2000
+
