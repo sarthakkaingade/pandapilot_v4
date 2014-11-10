@@ -112,7 +112,7 @@ public:
 
 private:
 #if defined(CONFIG_ARCH_BOARD_NAVSTIK_V1)
-	static const unsigned _max_actuators = 6;
+	static const unsigned _max_actuators = 4;
 #endif
 #if defined(CONFIG_ARCH_BOARD_PX4FMU_V1)
 	static const unsigned _max_actuators = 4;
@@ -1190,7 +1190,7 @@ NAVSTIKFMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 #endif
 #if defined(CONFIG_ARCH_BOARD_NAVSTIK_V1)
 		case 6:
-			set_mode(MODE_6PWM);
+			set_mode(MODE_4PWM);
 			break;
 #endif
 #if defined(CONFIG_ARCH_BOARD_AEROCORE)
