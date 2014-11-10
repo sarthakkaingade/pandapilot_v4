@@ -112,6 +112,7 @@
 #define PX4IO_P_STATUS_FLAGS_FAILSAFE		(1 << 11) /* failsafe is active */
 #define PX4IO_P_STATUS_FLAGS_SAFETY_OFF		(1 << 12) /* safety is off */
 #define PX4IO_P_STATUS_FLAGS_FMU_INITIALIZED	(1 << 13) /* FMU was initialized and OK once */
+#define PX4IO_P_STATUS_FLAGS_RC_ST24		(1 << 14) /* ST24 input is valid */
 
 #define PX4IO_P_STATUS_ALARMS			3	 /* alarm flags - alarms latch, write 1 to a bit to clear it */
 #define PX4IO_P_STATUS_ALARMS_VBATT_LOW		(1 << 0) /* [1] VBatt is very close to regulator dropout */
@@ -220,6 +221,7 @@ enum {							/* DSM bind states */
                                                            hence index 12 can safely be used. */
 #define PX4IO_P_SETUP_RC_THR_FAILSAFE_US	13	/**< the throttle failsafe pulse length in microseconds */
 
+#define PX4IO_P_SETUP_FORCE_SAFETY_ON		14	/* force safety switch into 'disarmed' (PWM disabled state) */
 #define PX4IO_FORCE_SAFETY_MAGIC		22027	/* required argument for force safety (random) */
 
 /* autopilot control values, -10000..10000 */
@@ -245,6 +247,7 @@ enum {							/* DSM bind states */
 #define PX4IO_P_RC_CONFIG_MAX			2		/**< highest input value */
 #define PX4IO_P_RC_CONFIG_DEADZONE		3		/**< band around center that is ignored */
 #define PX4IO_P_RC_CONFIG_ASSIGNMENT		4		/**< mapped input value */
+#define PX4IO_P_RC_CONFIG_ASSIGNMENT_MODESWITCH	100		/**< magic value for mode switch */
 #define PX4IO_P_RC_CONFIG_OPTIONS		5		/**< channel options bitmask */
 #define PX4IO_P_RC_CONFIG_OPTIONS_ENABLED	(1 << 0)
 #define PX4IO_P_RC_CONFIG_OPTIONS_REVERSE	(1 << 1)
