@@ -1404,7 +1404,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("RC_CHANNELS_RAW", 1.0f);
 		configure_stream("POSITION_TARGET_GLOBAL_INT", 3.0f);
 		configure_stream("ATTITUDE_TARGET", 3.0f);
-		configure_stream("DISTANCE_SENSOR", 0.5f);
+		configure_stream("DISTANCE_SENSOR", 5.0f);
 		configure_stream("OPTICAL_FLOW", 5.0f);
 		configure_stream("POSITION_TARGET_LOCAL_NED", 8.0f);
 		break;

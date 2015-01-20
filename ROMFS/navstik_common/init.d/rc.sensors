@@ -37,6 +37,9 @@ fi
 # Start Pressure Sensor
 bmp180 start
 
+# Start Ultrasonic Sensor
+sonar start
+
 # Start airspeed sensors
 if meas_airspeed start
 then
