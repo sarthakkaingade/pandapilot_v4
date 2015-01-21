@@ -62,6 +62,7 @@
 #include <uORB/topics/vision_position_estimate.h>
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/optical_flow.h>
+#include <drivers/drv_range_finder.h>
 #include <mavlink/mavlink_log.h>
 #include <poll.h>
 #include <systemlib/err.h>
@@ -84,7 +85,7 @@ static bool verbose_mode = false;
 static const hrt_abstime vision_topic_timeout = 500000;	// Vision topic timeout = 0.5s
 static const hrt_abstime gps_topic_timeout = 500000;		// GPS topic timeout = 0.5s
 static const hrt_abstime flow_topic_timeout = 1000000;	// optical flow topic timeout = 1s
-static const hrt_abstime sonar_timeout = 150000;	// sonar timeout = 150ms
+static const hrt_abstime sonar_timeout = 1000000;	// sonar timeout = 1s
 static const hrt_abstime sonar_valid_timeout = 1000000;	// estimate sonar distance during this time after sonar loss
 static const hrt_abstime xy_src_timeout = 2000000;	// estimate position during this time after position sources loss
 static const uint32_t updates_counter_len = 1000000;
@@ -325,6 +326,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 	memset(&local_pos, 0, sizeof(local_pos));
 	struct optical_flow_s flow;
 	memset(&flow, 0, sizeof(flow));
+	struct range_finder_report range;
+	memset(&range, 0, sizeof(range));
 	struct vision_position_estimate vision;
 	memset(&vision, 0, sizeof(vision));
 	struct vehicle_global_position_s global_pos;
@@ -337,6 +340,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 	int sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
 	int vehicle_attitude_sub = orb_subscribe(ORB_ID(vehicle_attitude));
 	int optical_flow_sub = orb_subscribe(ORB_ID(optical_flow));
+	int range_finder_sub = orb_subscribe(ORB_ID(sensor_range_finder));
 	int vehicle_gps_position_sub = orb_subscribe(ORB_ID(vehicle_gps_position));
 	int vision_position_estimate_sub = orb_subscribe(ORB_ID(vision_position_estimate));
 	int home_position_sub = orb_subscribe(ORB_ID(home_position));
@@ -593,6 +597,49 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 				flow_updates++;
 			}
 
+			/* Range Finder Sensor (Sonar) */
+			orb_check(range_finder_sub, &updated);
+	
+			if (updated) {
+				orb_copy(ORB_ID(sensor_range_finder), range_finder_sub, &range);
+
+				if ((range.distance > range.minimum_distance) &&
+					(range.distance < range.maximum_distance) &&
+					(att.R[2][2] > 0.7f) &&
+					(fabsf(range.distance - sonar_prev) > FLT_EPSILON)) {
+
+					sonar_time = t;
+					sonar_prev = range.distance;
+					corr_sonar = range.distance + surface_offset + z_est[0];
+					corr_sonar_filtered += (corr_sonar - corr_sonar_filtered) * params.sonar_filt;
+
+					if (fabsf(corr_sonar) > params.sonar_err) {
+						/* correction is too large: spike or new ground level? */
+						if (fabsf(corr_sonar - corr_sonar_filtered) > params.sonar_err) {
+							/* spike detected, ignore */
+							corr_sonar = 0.0f;
+							sonar_valid = false;
+
+						} else {
+							/* new ground level */
+							surface_offset -= corr_sonar;
+							surface_offset_rate = 0.0f;
+							corr_sonar = 0.0f;
+							corr_sonar_filtered = 0.0f;
+							sonar_valid_time = t;
+							sonar_valid = true;
+							local_pos.surface_bottom_timestamp = t;
+							mavlink_log_info(mavlink_fd, "[inav] new surface level: %.2f", (double)surface_offset);
+						}
+
+					} else {
+						/* correction is ok, use it */
+						sonar_valid_time = t;
+						sonar_valid = true;
+					}
+				}				
+			}
+
 			/* home position */
 			orb_check(home_position_sub, &updated);
 
@@ -780,7 +827,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 		}
 
 		/* check for timeout on FLOW topic */
-		if ((flow_valid || sonar_valid) && t > flow.timestamp + flow_topic_timeout) {
+		if (flow_valid && t > flow.timestamp + flow_topic_timeout) {
 			flow_valid = false;
 			sonar_valid = false;
 			warnx("FLOW timeout");
@@ -805,6 +852,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 		if (sonar_valid && (t > (sonar_time + sonar_timeout))) {
 			corr_sonar = 0.0f;
 			sonar_valid = false;
+			warnx("Sonar timeout");
+			mavlink_log_info(mavlink_fd, "[inav] Sonar timeout");
 		}
 
 		float dt = t_prev > 0 ? (t - t_prev) / 1000000.0f : 0.0f;
@@ -825,6 +874,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 		/* use VISION if it's valid and has a valid weight parameter */
 		bool use_vision_xy = vision_valid && params.w_xy_vision_p > MIN_VALID_W;
 		bool use_vision_z = vision_valid && params.w_z_vision_p > MIN_VALID_W;
+		/* use SONAR if it's valid and has a valid weight parameter */
+		bool use_sonar_z = sonar_valid && params.w_z_sonar > MIN_VALID_W;
 		/* use flow if it's valid and (accurate or no GPS available) */
 		bool use_flow = flow_valid && (flow_accurate || !use_gps_xy);
 
@@ -960,6 +1011,10 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			epv = fminf(epv, gps.epv);
 
 			inertial_filter_correct(corr_gps[2][0], dt, z_est, 0, w_z_gps_p);
+		}
+
+		if (use_sonar_z) {
+			inertial_filter_correct(-sonar_prev - z_est[0], dt, z_est, 0, params.w_z_sonar);
 		}
 
 		if (use_vision_z) {

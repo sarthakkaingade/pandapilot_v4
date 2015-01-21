@@ -2110,6 +2110,9 @@ protected:
 			case RANGE_FINDER_TYPE_LASER:
 				msg.type = MAV_DISTANCE_SENSOR_LASER;
 				break;
+			case RANGE_FINDER_TYPE_ULTRASOUND:
+				msg.type = MAV_DISTANCE_SENSOR_ULTRASOUND;
+				break;
 
 			default:
 				msg.type = MAV_DISTANCE_SENSOR_LASER;
@@ -2119,7 +2122,7 @@ protected:
 			msg.id = 0;
 			msg.orientation = 0;
 			msg.min_distance = range.minimum_distance * 100;
-			msg.max_distance = range.minimum_distance * 100;
+			msg.max_distance = range.maximum_distance * 100;
 			msg.current_distance = range.distance * 100;
 			msg.covariance = 20;
 
