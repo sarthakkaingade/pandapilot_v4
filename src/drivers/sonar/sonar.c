@@ -116,7 +116,7 @@ int sonar_thread_main(int argc, char *argv[])
 
 			//printf("sonar app: %0.2f", (double)sonar_distance);
 			sonar_raw.timestamp = hrt_absolute_time();
-			sonar_raw.type = RANGE_FINDER_TYPE_ULTRASONIC;
+			sonar_raw.type = RANGE_FINDER_TYPE_ULTRASOUND;
 			sonar_raw.distance = sonar_distance;
 			sonar_raw.valid = valid;
 			orb_publish(ORB_ID(sensor_range_finder), sensor_sonar_pub, &sonar_raw);

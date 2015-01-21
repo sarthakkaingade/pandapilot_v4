@@ -1405,8 +1405,8 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("POSITION_TARGET_GLOBAL_INT", 3.0f);
 		configure_stream("ATTITUDE_TARGET", 3.0f);
 		configure_stream("DISTANCE_SENSOR", 5.0f);
+		configure_stream("POSITION_TARGET_LOCAL_NED", 10.0f);
 		configure_stream("OPTICAL_FLOW", 5.0f);
-		configure_stream("POSITION_TARGET_LOCAL_NED", 8.0f);
 		break;
 
 	case MAVLINK_MODE_ONBOARD:
