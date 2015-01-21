@@ -156,6 +156,8 @@ private:
 		param_t tilt_max_air;
 		param_t land_speed;
 		param_t tilt_max_land;
+		param_t alt_sp_flag;
+		param_t alt_sp;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -164,6 +166,8 @@ private:
 		float tilt_max_air;
 		float land_speed;
 		float tilt_max_land;
+		float alt_sp_flag;
+		float alt_sp;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -176,6 +180,7 @@ private:
 
 	struct map_projection_reference_s _ref_pos;
 	float _ref_alt;
+	float _prev_alt_sp;
 	hrt_abstime _ref_timestamp;
 
 	bool _reset_pos_sp;
@@ -295,6 +300,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_global_vel_sp_pub(-1),
 
 	_ref_alt(0.0f),
+	_prev_alt_sp(0.0f),
 	_ref_timestamp(0),
 
 	_reset_pos_sp(true),
@@ -346,6 +352,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.tilt_max_air	= param_find("MPC_TILTMAX_AIR");
 	_params_handles.land_speed	= param_find("MPC_LAND_SPEED");
 	_params_handles.tilt_max_land	= param_find("MPC_TILTMAX_LND");
+	_params_handles.alt_sp_flag	= param_find("ALT_SP_FLAG");
+	_params_handles.alt_sp		= param_find("ALT_SP");
 
 	/* fetch initial parameter values */
 	parameters_update(true);
@@ -395,6 +403,8 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.land_speed, &_params.land_speed);
 		param_get(_params_handles.tilt_max_land, &_params.tilt_max_land);
 		_params.tilt_max_land = math::radians(_params.tilt_max_land);
+		param_get(_params_handles.alt_sp_flag, &_params.alt_sp_flag);
+		param_get(_params_handles.alt_sp, &_params.alt_sp);
 
 		float v;
 		param_get(_params_handles.xy_p, &v);
@@ -646,13 +656,14 @@ MulticopterPositionControl::control_offboard(float dt)
 	if (updated) {
 		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
 	}
+	
+	_sp_move_rate.zero();
 
 	if (_pos_sp_triplet.current.valid) {
 		if (_control_mode.flag_control_position_enabled && _pos_sp_triplet.current.position_valid) {
 			/* control position */
 			_pos_sp(0) = _pos_sp_triplet.current.x;
 			_pos_sp(1) = _pos_sp_triplet.current.y;
-			_pos_sp(2) = _pos_sp_triplet.current.z;
 
 		} else if (_control_mode.flag_control_velocity_enabled && _pos_sp_triplet.current.velocity_valid) {
 			/* control velocity */
@@ -670,13 +681,23 @@ MulticopterPositionControl::control_offboard(float dt)
 			_att_sp.yaw_body = _att_sp.yaw_body + _pos_sp_triplet.current.yawspeed * dt;
 		}
 
-		if (_control_mode.flag_control_altitude_enabled) {
+		if (_control_mode.flag_control_altitude_enabled && _pos_sp_triplet.current.position_valid) {
+			/* Control altitude */
+			_pos_sp(2) = _pos_sp_triplet.current.z;
+		} else if (_control_mode.flag_control_climb_rate_enabled && _pos_sp_triplet.current.velocity_valid) {
 			/* reset alt setpoint to current altitude if needed */
 			reset_alt_sp();
 
 			/* set altitude setpoint move rate */
 			_sp_move_rate(2) = _pos_sp_triplet.current.vz;
 		}
+
+		/* _sp_move_rate scaled to 0..1, scale it to max speed and rotate around yaw */
+		math::Matrix<3, 3> R_yaw_sp;
+		R_yaw_sp.from_euler(0.0f, 0.0f, _att_sp.yaw_body);
+		_sp_move_rate = R_yaw_sp * _sp_move_rate.emult(_params.vel_max);
+		/* _pos_sp rotate around yaw */
+		_pos_sp = R_yaw_sp * _pos_sp;
 
 		/* feed forward setpoint move rate with weight vel_ff */
 		_vel_ff = _sp_move_rate.emult(_params.vel_ff);
@@ -685,25 +706,7 @@ MulticopterPositionControl::control_offboard(float dt)
 		_pos_sp += _sp_move_rate * dt;
 		_pos_sp += _pos;	/*Position Offset--->NavStik*/
 
-		/* check if position setpoint is too far from actual position */
-		math::Vector<3> pos_sp_offs;
-		pos_sp_offs.zero();
-
-		if (_control_mode.flag_control_position_enabled) {
-			pos_sp_offs(0) = (_pos_sp(0) - _pos(0)) / _params.sp_offs_max(0);
-			pos_sp_offs(1) = (_pos_sp(1) - _pos(1)) / _params.sp_offs_max(1);
-		}
-
-		if (_control_mode.flag_control_altitude_enabled) {
-			pos_sp_offs(2) = (_pos_sp(2) - _pos(2)) / _params.sp_offs_max(2);
-		}
-
-		float pos_sp_offs_norm = pos_sp_offs.length();
-
-		if (pos_sp_offs_norm > 1.0f) {
-			pos_sp_offs /= pos_sp_offs_norm;
-			_pos_sp = _pos + pos_sp_offs.emult(_params.sp_offs_max);
-		}
+		limit_pos_sp_offset();
 
 	} else {
 		reset_pos_sp();
@@ -988,6 +991,13 @@ MulticopterPositionControl::task_main()
 			} else {
 				/* AUTO */
 				control_auto(dt);
+			}
+		
+			if (_params.alt_sp_flag == 1) {
+			_pos_sp(2) = -_params.alt_sp;
+			if(_prev_alt_sp != _params.alt_sp)
+			mavlink_log_info(_mavlink_fd, "[mpc] QGC reset alt sp: %.2f", (double) - _pos_sp(2));
+			_prev_alt_sp = _params.alt_sp;
 			}
 
 			/* fill local position setpoint */
