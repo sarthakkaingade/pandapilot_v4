@@ -571,9 +571,9 @@ then
 	#
 	# Start the navigator
 	#
-	navigator start
+	#navigator start
 	usleep 5000
-	mavlink start -d /dev/ttyACM0 -m onboard -b 57600
+	mavlink start -d /dev/ttyACM0 -m onboard -b 115200
 
 	#
 	# Start PWM Input

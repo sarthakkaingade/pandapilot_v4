@@ -1412,6 +1412,7 @@ Mavlink::task_main(int argc, char *argv[])
 	case MAVLINK_MODE_ONBOARD:
 		configure_stream("SYS_STATUS", 1.0f);
 		configure_stream("ATTITUDE", 50.0f);
+		configure_stream("LOCAL_POSITION_NED", 20.0f);
 		configure_stream("GLOBAL_POSITION_INT", 50.0f);
 		configure_stream("CAMERA_CAPTURE", 2.0f);
 		configure_stream("ATTITUDE_TARGET", 10.0f);

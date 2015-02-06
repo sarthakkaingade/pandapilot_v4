@@ -694,7 +694,7 @@ MulticopterPositionControl::control_offboard(float dt)
 
 		/* _sp_move_rate scaled to 0..1, scale it to max speed and rotate around yaw */
 		math::Matrix<3, 3> R_yaw_sp;
-		R_yaw_sp.from_euler(0.0f, 0.0f, _att_sp.yaw_body);
+		R_yaw_sp.from_euler(0.0f, 0.0f, _att.yaw);
 		_sp_move_rate = R_yaw_sp * _sp_move_rate.emult(_params.vel_max);
 		/* _pos_sp rotate around yaw */
 		_pos_sp = R_yaw_sp * _pos_sp;

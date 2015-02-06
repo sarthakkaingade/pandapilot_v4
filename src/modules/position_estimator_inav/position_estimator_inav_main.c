@@ -74,6 +74,7 @@
 #include "inertial_filter.h"
 
 #define MIN_VALID_W 0.00001f
+#define MAX_BARO_W 5.0f		// Dyanamic weight adjustment for altitude estimate
 #define PUB_INTERVAL 10000	// limit publish rate to 100 Hz
 #define EST_BUF_SIZE 250000 / PUB_INTERVAL		// buffer size is 0.5s
 
@@ -250,6 +251,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 	float surface_offset = 0.0f;	// ground level offset from reference altitude
 	float surface_offset_rate = 0.0f;	// surface offset change rate
 	float alt_avg = 0.0f;
+	float local_baro_w = 0.5f;
 	bool landed = true;
 	hrt_abstime landed_time = 0;
 
@@ -603,11 +605,20 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			if (updated) {
 				orb_copy(ORB_ID(sensor_range_finder), range_finder_sub, &range);
 
-				if ((range.distance > range.minimum_distance) &&
-					(range.distance < range.maximum_distance) &&
+				if (range.valid == 0) {
+					sonar_valid = false;
+					if (local_baro_w > MAX_BARO_W) {
+						local_baro_w = MAX_BARO_W;
+					} else {
+					local_baro_w += 0.2f;
+					}
+				}
+
+				if ((range.valid == 1) &&
 					(att.R[2][2] > 0.7f) &&
 					(fabsf(range.distance - sonar_prev) > FLT_EPSILON)) {
-
+	
+					local_baro_w = params.w_z_baro;
 					sonar_time = t;
 					sonar_prev = range.distance;
 					corr_sonar = range.distance + surface_offset + z_est[0];
@@ -638,6 +649,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 						sonar_valid = true;
 					}
 				}				
+			} else {
+				local_baro_w = params.w_z_baro;
 			}
 
 			/* home position */
@@ -981,7 +994,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			accel_bias_corr[1] -= corr_flow[1] * params.w_xy_flow;
 		}
 
-		accel_bias_corr[2] -= corr_baro * params.w_z_baro * params.w_z_baro;
+		accel_bias_corr[2] -= corr_baro * local_baro_w * local_baro_w;
 
 		/* transform error vector from NED frame to body frame */
 		for (int i = 0; i < 3; i++) {
@@ -1005,7 +1018,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 		}
 
 		/* inertial filter correction for altitude */
-		inertial_filter_correct(corr_baro, dt, z_est, 0, params.w_z_baro);
+		inertial_filter_correct(corr_baro, dt, z_est, 0, local_baro_w);
 
 		if (use_gps_z) {
 			epv = fminf(epv, gps.epv);
