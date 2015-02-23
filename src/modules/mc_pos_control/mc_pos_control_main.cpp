@@ -156,6 +156,11 @@ private:
 		param_t tilt_max_air;
 		param_t land_speed;
 		param_t tilt_max_land;
+		param_t alt_sp_flag;
+		param_t alt_sp;
+		param_t pos_sp_flag;
+		param_t pos_sp_x;
+		param_t pos_sp_y;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -164,6 +169,11 @@ private:
 		float tilt_max_air;
 		float land_speed;
 		float tilt_max_land;
+		float alt_sp_flag;
+		float alt_sp;
+		float pos_sp_flag;
+		float pos_sp_x;
+		float pos_sp_y;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -176,6 +186,9 @@ private:
 
 	struct map_projection_reference_s _ref_pos;
 	float _ref_alt;
+	float _prev_alt_sp;
+	float _prev_pos_sp_x;
+	float _prev_pos_sp_y;
 	hrt_abstime _ref_timestamp;
 
 	bool _reset_pos_sp;
@@ -295,6 +308,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_global_vel_sp_pub(-1),
 
 	_ref_alt(0.0f),
+	_prev_alt_sp(0.0f),
+	_prev_pos_sp_x(0.0f),
+	_prev_pos_sp_y(0.0f),
 	_ref_timestamp(0),
 
 	_reset_pos_sp(true),
@@ -346,6 +362,11 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.tilt_max_air	= param_find("MPC_TILTMAX_AIR");
 	_params_handles.land_speed	= param_find("MPC_LAND_SPEED");
 	_params_handles.tilt_max_land	= param_find("MPC_TILTMAX_LND");
+	_params_handles.alt_sp_flag	= param_find("ALT_SP_FLAG");
+	_params_handles.alt_sp		= param_find("ALT_SP");
+	_params_handles.pos_sp_flag	= param_find("POS_SP_FLAG");
+	_params_handles.pos_sp_x	= param_find("POS_SP_X");
+	_params_handles.pos_sp_y	= param_find("POS_SP_Y");
 
 	/* fetch initial parameter values */
 	parameters_update(true);
@@ -395,6 +416,11 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.land_speed, &_params.land_speed);
 		param_get(_params_handles.tilt_max_land, &_params.tilt_max_land);
 		_params.tilt_max_land = math::radians(_params.tilt_max_land);
+		param_get(_params_handles.alt_sp_flag, &_params.alt_sp_flag);
+		param_get(_params_handles.alt_sp, &_params.alt_sp);
+		param_get(_params_handles.pos_sp_flag, &_params.pos_sp_flag);
+		param_get(_params_handles.pos_sp_x, &_params.pos_sp_x);
+		param_get(_params_handles.pos_sp_y, &_params.pos_sp_y);
 
 		float v;
 		param_get(_params_handles.xy_p, &v);
@@ -614,9 +640,9 @@ MulticopterPositionControl::control_manual(float dt)
 	_vel_ff = _sp_move_rate.emult(_params.vel_ff);
 
 	/* move position setpoint */
-	_pos_sp += _sp_move_rate * dt;
+	//_pos_sp += _sp_move_rate * dt;
 
-	/* check if position setpoint is too far from actual position */
+	/* check if position setpoint is too far from actual position 
 	math::Vector<3> pos_sp_offs;
 	pos_sp_offs.zero();
 
@@ -634,7 +660,45 @@ MulticopterPositionControl::control_manual(float dt)
 	if (pos_sp_offs_norm > 1.0f) {
 		pos_sp_offs /= pos_sp_offs_norm;
 		_pos_sp = _pos + pos_sp_offs.emult(_params.sp_offs_max);
+	} */
+	
+	if (_control_mode.flag_control_position_enabled) {
+		if (_params.pos_sp_flag == 1) {
+			_pos_sp(0) = _params.pos_sp_x;
+			_pos_sp(1) = _params.pos_sp_y;
+			if(_prev_pos_sp_x != _params.pos_sp_x)
+			mavlink_log_info(_mavlink_fd, "[mpc] QGC reset pos sp-x: %.2f", (double) _pos_sp(0));
+			if(_prev_pos_sp_y != _params.pos_sp_y)
+			mavlink_log_info(_mavlink_fd, "[mpc] QGC reset pos sp-y: %.2f", (double) _pos_sp(1));
+			_prev_pos_sp_x = _params.pos_sp_x;		
+			_prev_pos_sp_y = _params.pos_sp_y;
+		} else if (_params.pos_sp_flag == 2) {
+			if(_prev_pos_sp_x != _params.pos_sp_x) {
+				_pos_sp(0) += _params.pos_sp_x;
+				mavlink_log_info(_mavlink_fd, "[mpc] QGC offset pos sp-x: %.2f", (double) _pos_sp(0));
+			}
+			if(_prev_pos_sp_y != _params.pos_sp_y) {
+				_pos_sp(1) += _params.pos_sp_y;
+				mavlink_log_info(_mavlink_fd, "[mpc] QGC offset pos sp-y: %.2f", (double) _pos_sp(1));
+			}
+			_prev_pos_sp_x = _params.pos_sp_x;		
+			_prev_pos_sp_y = _params.pos_sp_y;
+			limit_pos_sp_offset();
+		} else {
+			_pos_sp += _sp_move_rate * dt;
+			limit_pos_sp_offset();
+		}		
 	}
+	
+	if (_control_mode.flag_control_altitude_enabled) {
+		if (_params.alt_sp_flag == 1) {
+		_pos_sp(2) = -_params.alt_sp;
+		if(_prev_alt_sp != _params.alt_sp)
+		mavlink_log_info(_mavlink_fd, "[mpc] QGC reset alt sp: %.2f", (double) - _pos_sp(2));
+		_prev_alt_sp = _params.alt_sp;
+		}
+	}
+
 }
 
 void
