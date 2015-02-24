@@ -473,7 +473,7 @@ Navigator::task_main()
 			_pos_sp_triplet.previous.valid = false;
 			_pos_sp_triplet.current.valid = false;
 			_pos_sp_triplet.next.valid = false;
-			_pos_sp_triplet_updated = true;
+			_pos_sp_triplet_updated = false;
 		}
 
 		if (_pos_sp_triplet_updated) {
