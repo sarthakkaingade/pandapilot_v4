@@ -61,7 +61,7 @@ then
 	sercon
 
 	# Try to get an USB console
-	nshterm /dev/ttyACM0 &	
+	#nshterm /dev/ttyACM0 &
 
 	#
 	# Start the ORB (first app to start)
@@ -573,8 +573,7 @@ then
 	#
 	navigator start
 	usleep 5000
-	mavlink start -d /dev/ttyS0 -m onboard -b 115200
-	set EXIT_ON_END yes
+	mavlink start -d /dev/ttyACM0 -m onboard -b 115200
 
 	#
 	# Start PWM Input
