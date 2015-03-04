@@ -74,7 +74,8 @@
 #include <uORB/topics/actuator_armed.h>
 
 #ifdef CONFIG_ARCH_BOARD_NAVSTIK_V1
-extern volatile uint16_t rc_buffer[PWM_INPUT_CHANNELS] ;
+__EXPORT extern uint16_t rc_buffer[PWM_INPUT_CHANNELS] ;
+__EXPORT extern uint8_t rc_input_status;
 #endif
 
 #ifdef HRT_PPM_CHANNEL
@@ -551,6 +552,8 @@ NAVSTIKFMU::task_main()
 
 	memset(&rc_in, 0, sizeof(rc_in));
 
+	//uint8_t detected_rc_loss = 0;
+
 #ifdef HRT_PPM_CHANNEL
 	rc_in.input_source = RC_INPUT_SOURCE_PX4FMU_PPM;
 #endif
@@ -755,11 +758,32 @@ NAVSTIKFMU::task_main()
 		rc_in.timestamp_last_signal = hrt_absolute_time();
 		rc_in.channel_count = PWM_INPUT_CHANNELS ;
 		for (uint8_t i=0; i<rc_in.channel_count; i++) {
-			rc_in.values[i] = rc_buffer[i];
+			rc_in.values[i] = rc_buffer[i];		
 		}
+		if (rc_input_status == 0 || rc_input_status == 8 || rc_input_status == 16 || rc_input_status == 24) {
+			rc_in.rc_lost = true;
+			
+			/*printf("\n [fmu] RC signal lost");
+			
+			if (detected_rc_loss == 0) {
+				detected_rc_loss = 1;
+			} else {
+				detected_rc_loss++;
+			}*/
+		} else {
+			rc_in.rc_lost = false;
+			//detected_rc_loss =0;
+		} /*/*
+		printf("\nstatus=%d\tflag=%d",rc_input_status,detected_rc_loss);
+		if (detected_rc_loss >= 10) {
+			rc_in.rc_lost = true;
+			printf("\n [fmu] RC signal lost");
+		} else {
+			rc_in.rc_lost = false;
+		}*/
+		rc_input_status = 0;
 		rc_in.rssi = RC_INPUT_RSSI_MAX;
 		rc_in.rc_failsafe = false;
-		rc_in.rc_lost = false;
 		rc_in.rc_lost_frame_count = 0;
 		rc_in.rc_total_frame_count = 0;
 		/* lazily advertise on first publication */

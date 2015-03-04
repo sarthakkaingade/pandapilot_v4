@@ -60,6 +60,7 @@
 #include <stm32.h>
 #include <stm32_gpio.h>
 #include <stm32_tim.h>
+#include <drivers/drv_rc_input.h>
 #include "input.h" 
 
 /* PWM Input 
@@ -98,7 +99,8 @@ uint16_t rc6;
 uint16_t rc6_last;
 
 #define RC_MAX_CHANNELS	6
-__EXPORT volatile uint16_t rc_buffer[RC_MAX_CHANNELS];
+__EXPORT uint16_t rc_buffer[RC_MAX_CHANNELS];
+__EXPORT uint8_t rc_input_status;
 
 #define MAX_PULSEWIDTH 2000
 
@@ -306,7 +308,7 @@ rSR(0) = ~status;
 	if (rc1 <= MAX_PULSEWIDTH)
 		rc_buffer[0]=rc1;
 	//printf("RC1: %u\n", rc1);
-	
+	rc_input_status |= ch1_mask;
   	}
 
 status = rSR(1);
@@ -332,7 +334,7 @@ rSR(1) = ~status;
 	rc_buffer[2]=rc3;
 	
 	//printf("RC3: %u\n", rc3);
-	
+	rc_input_status |= ch3_mask;
   	}
   	if (status & (GTIM_SR_CC2IF | GTIM_SR_CC2OF)) 
 	{
@@ -353,7 +355,7 @@ rSR(1) = ~status;
 	rc_buffer[3]=rc4;
 	
 	//printf("RC4: %u\n", rc4);
-	
+	rc_input_status |= ch4_mask;
   	}
 
 status = rSR(2);
@@ -378,7 +380,7 @@ rSR(2) = ~status;
 	rc_buffer[1]=rc2;
 	
 	//printf("RC2: %u\n", rc2);
-	
+	rc_input_status |= ch2_mask;
   	}
 
 status = rSR(3);
@@ -403,7 +405,7 @@ rSR(3) = ~status;
 	rc_buffer[5]=rc6;
 	
 	//printf("RC6: %u\n", rc6);
-	
+	rc_input_status |= ch6_mask;
   	}
   	
   	if (status & (ATIM_SR_CC2IF | ATIM_SR_CC2OF)) 
@@ -425,7 +427,7 @@ rSR(3) = ~status;
 	rc_buffer[4]=rc5;
 	
 	//printf("RC5: %u\n", rc5);
-	
+	rc_input_status |= ch5_mask;
   	}
   	
   	return;

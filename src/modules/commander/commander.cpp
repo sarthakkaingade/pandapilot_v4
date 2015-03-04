@@ -2127,7 +2127,7 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 		break;
 
 	case SWITCH_POS_ON:			// AUTO
-		if (sp_man->return_switch == SWITCH_POS_ON) {
+		if (sp_man->return_switch == SWITCH_POS_OFF) {
 			res = main_state_transition(status_local, MAIN_STATE_AUTO_RTL);
 
 			if (res != TRANSITION_DENIED) {

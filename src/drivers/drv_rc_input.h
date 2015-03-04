@@ -67,6 +67,14 @@
  */
 #define RC_INPUT_RSSI_MAX	255
 
+/* Channel masking */
+#define ch1_mask 0b00000001
+#define ch2_mask 0b00000010
+#define ch3_mask 0b00000100
+#define ch4_mask 0b00001000
+#define ch5_mask 0b00010000
+#define ch6_mask 0b00100000
+
 /**
  * @addtogroup topics
  * @{
