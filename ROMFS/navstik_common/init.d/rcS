@@ -437,7 +437,7 @@ then
 			set EXIT_ON_END yes
 		else
 			# Start MAVLink on default port: ttyS2
-			set MAVLINK_FLAGS "-r 1000"
+			set MAVLINK_FLAGS "-r 1000 -b 115200"
 		fi
 	fi
 
@@ -568,18 +568,19 @@ then
 		fi
 	fi
 
-	#
-	# Start the navigator
-	#
-	navigator start
-	usleep 5000
-	mavlink start -d /dev/ttyACM0 -m onboard -b 115200
 
 	#
 	# Start PWM Input
 	#
 	usleep 5000
-	pwm_input
+	pwm_input &
+
+	#
+	# Start the navigator
+	#
+	navigator start
+	usleep 5000
+	mavlink start -d /dev/ttyACM0 -m onboard -b 115200 -r 1000
 
 	#
 	# Generic setup (autostart ID not found)

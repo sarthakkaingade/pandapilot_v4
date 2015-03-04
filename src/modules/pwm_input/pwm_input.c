@@ -97,6 +97,7 @@ uint16_t rc5;
 uint16_t rc5_last;
 uint16_t rc6;
 uint16_t rc6_last;
+uint16_t count1;
 
 #define RC_MAX_CHANNELS	6
 __EXPORT uint16_t rc_buffer[RC_MAX_CHANNELS];
@@ -292,7 +293,7 @@ status = rSR(0);
 rSR(0) = ~status;	
 	if (status & (GTIM_SR_CC1IF | GTIM_SR_CC1OF)) 
 	{
-	uint16_t count1 = rCCR1(0);
+	count1 = rCCR1(0);
   	//printf("Captured on RC1  %u\n", count1);
   	
   	/* if we missed an edge, we have to give up */
@@ -317,7 +318,7 @@ rSR(1) = ~status;
 	
 	if (status & (GTIM_SR_CC1IF | GTIM_SR_CC1OF)) 
 	{
-	uint16_t count1 = rCCR1(1);
+	count1 = rCCR1(1);
   	//printf("Captured on RC3  %u\n", count1);
   	
   	/* if we missed an edge, we have to give up */
@@ -338,7 +339,7 @@ rSR(1) = ~status;
   	}
   	if (status & (GTIM_SR_CC2IF | GTIM_SR_CC2OF)) 
 	{
-	uint16_t count1 = rCCR2(1);
+	count1 = rCCR2(1);
   	//printf("Captured on RC4 %u\n", count1);
   	
   	/* if we missed an edge, we have to give up */
@@ -364,7 +365,7 @@ rSR(2) = ~status;
 	
 	if (status & (GTIM_SR_CC1IF | GTIM_SR_CC1OF)) 
 	{
-	uint16_t count1 = rCCR1(2);
+	count1 = rCCR1(2);
   	//printf("Captured on RC2  %u\n", count1);
   	/* if we missed an edge, we have to give up */
 /*	if (status & (GTIM_SR_CC1OF))
@@ -389,7 +390,7 @@ rSR(3) = ~status;
 	
 	if (status & (ATIM_SR_CC1IF | ATIM_SR_CC1OF)) 
 	{
-	uint16_t count1 = rCCR1(3);
+	count1 = rCCR1(3);
   	//printf("Captured on RC6  %u\n", count1);
   	/* if we missed an edge, we have to give up */
 /*	if (status & (ATIM_SR_CC1OF))
@@ -410,7 +411,7 @@ rSR(3) = ~status;
   	
   	if (status & (ATIM_SR_CC2IF | ATIM_SR_CC2OF)) 
 	{
-	uint16_t count1 = rCCR2(3);
+	count1 = rCCR2(3);
   	//printf("Captured on RC5  %u\n", count1);
   	
   	/* if we missed an edge, we have to give up */
