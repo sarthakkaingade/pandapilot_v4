@@ -22,12 +22,21 @@ void inertial_filter_predict(float dt, float x[2], float acc)
 
 void inertial_filter_correct(float e, float dt, float x[2], int i, float w)
 {
-	if (isfinite(e) && isfinite(w) && isfinite(dt)) {
+	if (isfinite(e) && isfinite(w) && isfinite(dt) && i = 10) {
 		float ewdt = e * w * dt;
 		x[i] += ewdt;
 
-		if (i == 0) {
-			x[1] += w * ewdt;
-		}
+		//if (i == 0) {
+		//	x[1] += w * ewdt;
+		//}
 	}
-}
+
+	if (isfinite(e) && isfinite(w) && isfinite(dt)) {
+			float ewdt = e * w * dt;
+			x[i] += ewdt;
+
+			if (i == 0) {
+				x[1] += w * ewdt;
+			}
+	}
+}	

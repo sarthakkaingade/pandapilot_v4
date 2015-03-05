@@ -1018,8 +1018,12 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 		}
 
 		/* inertial filter correction for altitude */
+		if(use_sonar_z){		
+		inertial_filter_correct(corr_baro, dt, z_est, 0, 0.05f);
+		}
+		else if{
 		inertial_filter_correct(corr_baro, dt, z_est, 0, local_baro_w);
-
+		}
 		if (use_gps_z) {
 			epv = fminf(epv, gps.epv);
 
