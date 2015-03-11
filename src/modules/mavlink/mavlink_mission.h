@@ -64,8 +64,8 @@ enum MAVLINK_WPM_CODES {
 	MAVLINK_WPM_CODE_ENUM_END
 };
 
-#define MAVLINK_MISSION_PROTOCOL_TIMEOUT_DEFAULT 5000000    ///< Protocol communication action timeout in useconds
-#define MAVLINK_MISSION_RETRY_TIMEOUT_DEFAULT 500000        ///< Protocol communication retry timeout in useconds
+#define MAVLINK_MISSION_PROTOCOL_TIMEOUT_DEFAULT 10000000    ///< Protocol communication action timeout in useconds
+#define MAVLINK_MISSION_RETRY_TIMEOUT_DEFAULT 1000000        ///< Protocol communication retry timeout in useconds
 
 class MavlinkMissionManager : public MavlinkStream {
 public:

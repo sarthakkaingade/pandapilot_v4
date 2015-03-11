@@ -368,7 +368,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 
 	/* wait for initial baro value */
 	bool wait_baro = true;
-
+	bool was_armed = false;
 	thread_running = true;
 
 	while (wait_baro && !thread_should_exit) {
@@ -399,6 +399,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 						mavlink_log_info(mavlink_fd, "[inav] baro offs: %.2f", (double)baro_offset);
 						local_pos.z_valid = true;
 						local_pos.v_z_valid = true;
+						baro_init_cnt = 0;
 					}
 				}
 			}
@@ -409,6 +410,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 	struct pollfd fds[1] = {
 		{ .fd = vehicle_attitude_sub, .events = POLLIN },
 	};
+
+
 
 	while (!thread_should_exit) {
 		int ret = poll(fds, 1, 20); // wait maximal 20 ms = 50 Hz minimum rate
@@ -450,7 +453,47 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			if (updated) {
 				orb_copy(ORB_ID(actuator_armed), armed_sub, &armed);
 			}
+			if (!armed.armed)
+				was_armed = false;
+			if (armed.armed && !was_armed){
+				wait_baro = true;
+				baro_offset = 0.0f;
+				while (wait_baro) {
+					int ret = poll(fds_init, 1, 1000);
+					was_armed = true;	
+					if (ret < 0) {
+						/* poll error */
+						mavlink_log_info(mavlink_fd, "[inav] poll error on armed init");
 
+					} else if (ret > 0) {
+						if (fds_init[0].revents & POLLIN) {
+							orb_copy(ORB_ID(sensor_combined), sensor_combined_sub, &sensor);
+
+							if (wait_baro && sensor.baro_timestamp != baro_timestamp) {
+								baro_timestamp = sensor.baro_timestamp;
+
+								/* mean calculation over several measurements */
+								if (baro_init_cnt < baro_init_num) {
+									if (isfinite(sensor.baro_alt_meter)) {
+										baro_offset += sensor.baro_alt_meter;
+										baro_init_cnt++;
+									}
+
+								} else {
+									wait_baro = false;
+									baro_offset /= (float) baro_init_cnt;
+									warnx("baro offs: %.2f", (double)baro_offset);
+									mavlink_log_info(mavlink_fd, "[inav] baro offs: %.2f", (double)baro_offset);
+									local_pos.z_valid = true;
+									local_pos.v_z_valid = true;
+									baro_init_cnt = 0;
+									z_est[0] = 0.0f;
+																	}
+							}
+						}
+					}
+				}
+			}	
 			/* sensor combined */
 			orb_check(sensor_combined_sub, &updated);
 
@@ -1019,9 +1062,9 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 
 		/* inertial filter correction for altitude */
 		if(use_sonar_z){		
-		inertial_filter_correct(corr_baro, dt, z_est, 0, 0.05f);
+		inertial_filter_correct(corr_baro, dt, z_est, 0, 0.5);
 		}
-		else if{
+		else if(!use_sonar_z){
 		inertial_filter_correct(corr_baro, dt, z_est, 0, local_baro_w);
 		}
 		if (use_gps_z) {
@@ -1031,7 +1074,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 		}
 
 		if (use_sonar_z) {
-			inertial_filter_correct(-sonar_prev - z_est[0], dt, z_est, 0, params.w_z_sonar);
+			inertial_filter_correct(-sonar_prev - z_est[0], dt, z_est, 10, params.w_z_sonar);
 		}
 
 		if (use_vision_z) {
