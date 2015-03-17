@@ -122,7 +122,7 @@ then
 	set EXIT_ON_END no
 	set MAV_TYPE none
 	set LOAD_DEFAULT_APPS yes
-	set GPS yes
+	set GPS no
 	set GPS_FAKE no
 	set FAILSAFE none
 

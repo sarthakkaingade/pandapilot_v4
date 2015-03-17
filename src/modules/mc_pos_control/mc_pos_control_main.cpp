@@ -1000,6 +1000,9 @@ MulticopterPositionControl::task_main()
 			_prev_alt_sp = _params.alt_sp;
 			}
 
+			_pos_sp(0) = 0; //Object Tracking -> Receiving local position, hard code setpoint to zero
+			_pos_sp(1) = 0;
+
 			/* fill local position setpoint */
 			_local_pos_sp.timestamp = hrt_absolute_time();
 			_local_pos_sp.x = _pos_sp(0);
