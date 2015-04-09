@@ -67,6 +67,7 @@
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_global_velocity_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/sensor_combined.h>
 #include <systemlib/param/param.h>
 #include <systemlib/err.h>
 #include <systemlib/systemlib.h>
@@ -122,6 +123,7 @@ private:
 	int		_pos_sp_triplet_sub;	/**< position setpoint triplet */
 	int		_local_pos_sp_sub;		/**< offboard local position setpoint */
 	int		_global_vel_sp_sub;		/**< offboard global velocity setpoint */
+	int 		_sensor_combined_sub;		/**< Raw sensor */
 
 	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
 	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
@@ -136,6 +138,7 @@ private:
 	struct position_setpoint_triplet_s		_pos_sp_triplet;	/**< vehicle global position setpoint triplet */
 	struct vehicle_local_position_setpoint_s	_local_pos_sp;		/**< vehicle local position setpoint */
 	struct vehicle_global_velocity_setpoint_s	_global_vel_sp;	/**< vehicle global velocity setpoint */
+	struct sensor_combined_s 			_sensor;	/**< Raw sensor */
 
 
 	struct {
@@ -181,6 +184,8 @@ private:
 	struct map_projection_reference_s _ref_pos;
 	float _ref_alt;
 	float _prev_alt_sp;
+	float acc[3] = { 0.0f, 0.0f, 0.0f };	// N E D
+
 	hrt_abstime _ref_timestamp;
 
 	bool _reset_pos_sp;
@@ -192,6 +197,7 @@ private:
 	math::Vector<3> _vel;
 	math::Vector<3> _vel_sp;
 	math::Vector<3> _vel_prev;			/**< velocity on previous step */
+	math::Vector<3> _vel_sp_prev;
 	math::Vector<3> _vel_ff;
 	math::Vector<3> _sp_move_rate;
 
@@ -293,6 +299,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_local_pos_sub(-1),
 	_pos_sp_triplet_sub(-1),
 	_global_vel_sp_sub(-1),
+	_sensor_combined_sub(-1),
 
 /* publications */
 	_att_sp_pub(-1),
@@ -316,7 +323,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	memset(&_pos_sp_triplet, 0, sizeof(_pos_sp_triplet));
 	memset(&_local_pos_sp, 0, sizeof(_local_pos_sp));
 	memset(&_global_vel_sp, 0, sizeof(_global_vel_sp));
-
+	memset(&_sensor, 0, sizeof(_sensor));
 	memset(&_ref_pos, 0, sizeof(_ref_pos));
 
 	_params.pos_p.zero();
@@ -332,6 +339,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_vel.zero();
 	_vel_sp.zero();
 	_vel_prev.zero();
+	_vel_sp_prev.zero();
 	_vel_ff.zero();
 	_sp_move_rate.zero();
 
@@ -485,6 +493,12 @@ MulticopterPositionControl::poll_subscriptions()
 
 	if (updated) {
 		orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
+	}
+
+	orb_check(_sensor_combined_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(sensor_combined), _sensor_combined_sub, &_sensor);
 	}
 }
 
@@ -693,18 +707,18 @@ MulticopterPositionControl::control_offboard(float dt)
 		}
 
 		/* _sp_move_rate scaled to 0..1, scale it to max speed and rotate around yaw */
-		math::Matrix<3, 3> R_yaw_sp;
-		R_yaw_sp.from_euler(0.0f, 0.0f, _att.yaw);
-		_sp_move_rate = R_yaw_sp * _sp_move_rate.emult(_params.vel_max);
+		//math::Matrix<3, 3> R_yaw_sp;
+		//R_yaw_sp.from_euler(0.0f, 0.0f, _att.yaw);
+		//_sp_move_rate = R_yaw_sp * _sp_move_rate.emult(_params.vel_max);
 		/* _pos_sp rotate around yaw */
-		_pos_sp = R_yaw_sp * _pos_sp;
+		//_pos_sp = R_yaw_sp * _pos_sp;
 
 		/* feed forward setpoint move rate with weight vel_ff */
 		_vel_ff = _sp_move_rate.emult(_params.vel_ff);
 
 		/* move position setpoint */
 		_pos_sp += _sp_move_rate * dt;
-		_pos_sp += _pos;	/*Position Offset--->NavStik*/
+		//_pos_sp += _pos;	/*Position Offset--->NavStik*/
 
 		limit_pos_sp_offset();
 
@@ -899,6 +913,7 @@ MulticopterPositionControl::task_main()
 	_pos_sp_triplet_sub = orb_subscribe(ORB_ID(position_setpoint_triplet));
 	_local_pos_sp_sub = orb_subscribe(ORB_ID(vehicle_local_position_setpoint));
 	_global_vel_sp_sub = orb_subscribe(ORB_ID(vehicle_global_velocity_setpoint));
+	_sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
 
 
 	parameters_update(true);
@@ -913,8 +928,8 @@ MulticopterPositionControl::task_main()
 	bool reset_int_z_manual = false;
 	bool reset_int_xy = true;
 	bool was_armed = false;
-
-	hrt_abstime t_prev = 0;
+	int update = 0;
+	hrt_abstime t_prev = 0, accel_timestamp = 0;
 
 	math::Vector<3> thrust_int;
 	thrust_int.zero();
@@ -944,6 +959,26 @@ MulticopterPositionControl::task_main()
 
 		poll_subscriptions();
 		parameters_update(false);
+		// NAVSTIK - > Object Tracking
+		if (_sensor.accelerometer_timestamp != accel_timestamp) {
+					if (_att.R_valid) {
+						/* transform acceleration vector from body frame to NED frame */
+						for (int i = 0; i < 3; i++) {
+							acc[i] = 0.0f;
+
+							for (int j = 0; j < 3; j++) {
+								acc[i] += _att.R[i][j] * _sensor.accelerometer_m_s2[j];
+							}
+						}
+
+						acc[2] += CONSTANTS_ONE_G;
+
+					} else {
+						memset(acc, 0, sizeof(acc));
+					}
+
+					accel_timestamp = _sensor.accelerometer_timestamp;
+		}
 
 		hrt_abstime t = hrt_absolute_time();
 		float dt = t_prev != 0 ? (t - t_prev) * 0.000001f : 0.0f;
@@ -1000,8 +1035,6 @@ MulticopterPositionControl::task_main()
 			_prev_alt_sp = _params.alt_sp;
 			}
 
-			_pos_sp(0) = 0; //Object Tracking -> Receiving local position, hard code setpoint to zero
-			_pos_sp(1) = 0;
 
 			/* fill local position setpoint */
 			_local_pos_sp.timestamp = hrt_absolute_time();
@@ -1041,10 +1074,27 @@ MulticopterPositionControl::task_main()
 				}
 
 			} else {
-				/* run position & altitude controllers, calculate velocity setpoint */
-				math::Vector<3> pos_err = _pos_sp - _pos;
 
+				math::Vector<3> pos_err;
+				 
+				
+				/* run position & altitude controllers, calculate velocity setpoint */
+				pos_err = _pos_sp - _pos;
+								
 				_vel_sp = pos_err.emult(_params.pos_p) + _vel_ff;
+
+				if (_control_mode.flag_control_offboard_enabled) {
+					_vel = _vel_sp_prev - _vel_sp;
+					_vel_sp_prev = _vel_sp;
+					if (update > 10 ) {
+						update = 0;
+					//warnx("\n VX = %0.4f\tVY = %0.4f\tAX = %0.4f\tAY = %0.4f\tAAX = %0.4f\tAAY = %0.4f", (double)_vel(0) * 100, (double)_vel(1) * 100, (double)acc[0], (double)acc[1], (double)_sensor.accelerometer_m_s2[0], (double)_sensor.accelerometer_m_s2[1]);
+					warnx("\n VX = %0.4f\tVY = %0.4f",(double)_vel(0), (double)_vel(1));
+					fflush(stdout);
+					}
+					update++;
+					
+				}
 
 				if (!_control_mode.flag_control_altitude_enabled) {
 					_reset_alt_sp = true;
